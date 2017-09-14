@@ -3,7 +3,7 @@
 *.ap_
 
 info.properties
-
+gradle.properties
 # Files for the ART/Dalvik VM
 *.dex
 
