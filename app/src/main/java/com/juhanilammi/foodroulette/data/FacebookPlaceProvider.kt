@@ -1,7 +1,6 @@
 package com.juhanilammi.foodroulette.data
 
 import android.location.Location
-import android.util.Log
 import com.facebook.places.PlaceManager
 import com.facebook.places.model.PlaceFields
 import com.facebook.places.model.PlaceSearchRequestParams
@@ -19,7 +18,6 @@ class FacebookPlaceProvider {
     companion object {
         val JSON = jacksonObjectMapper()
         var places = mutableListOf<SimpleFacebookLocation>()
-        var placesObservable: Observable<MutableList<SimpleFacebookLocation>> = Observable.just(places)
         var placesSubject: PublishSubject<MutableList<SimpleFacebookLocation>> = PublishSubject.create()
 
         operator fun JSONArray.iterator(): Iterator<JSONObject> = (0 until length()).asSequence().map { get(it) as JSONObject }.iterator()
