@@ -7,12 +7,14 @@ import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.support.v4.app.Fragment
 import android.support.v4.content.ContextCompat
+import android.support.v7.app.AlertDialog
 import android.util.Log
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.SupportMapFragment
 import com.juhanilammi.foodroulette.R
 import com.juhanilammi.foodroulette.data.FacebookPlaceProvider
+import com.juhanilammi.foodroulette.data.PlaceRepository
 import com.juhanilammi.foodroulette.data.models.SimpleFacebookLocation
 import com.juhanilammi.foodroulette.device.LocationManager
 import com.juhanilammi.foodroulette.ui.base.BaseActivity
@@ -21,6 +23,7 @@ import com.juhanilammi.foodroulette.ui.main.fragments.ListFragment
 import com.juhanilammi.foodroulette.utils.PermissionUtils
 import io.reactivex.Observer
 import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.rxkotlin.subscribeBy
 import io.reactivex.schedulers.Schedulers
 
 public class MainActivity : BaseActivity<MainView, MainPresenter>(), MainView {
@@ -52,7 +55,11 @@ public class MainActivity : BaseActivity<MainView, MainPresenter>(), MainView {
                             .subscribeOn(Schedulers.io())
                             .observeOn(AndroidSchedulers.mainThread())
                             .subscribe({ next ->
-                                FacebookPlaceProvider.retrievePlaces(next).subscribe({ nextt -> startListFragment(nextt) })
+                                Log.i("TESTING", next.toString())
+                                PlaceRepository.retrievePlace(next)
+                                        .subscribeBy(onNext = { item ->
+                                            AlertDialog.Builder(this).setMessage(item.name).show()
+                                        })
                             })
 
                 }
@@ -77,10 +84,7 @@ public class MainActivity : BaseActivity<MainView, MainPresenter>(), MainView {
     fun startListFragment(locations: List<SimpleFacebookLocation>) {
         var args = Bundle()
         var fragment = Fragment.instantiate(this, ListFragment::class.java!!.name) as ListFragment
-
-
-
-            supportFragmentManager.beginTransaction().replace(R.id.fragment_container,  fragment).commit()
+        supportFragmentManager.beginTransaction().replace(R.id.fragment_container, fragment).commit()
 
     }
 }

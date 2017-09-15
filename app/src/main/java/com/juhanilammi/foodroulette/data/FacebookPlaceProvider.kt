@@ -9,6 +9,7 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.juhanilammi.foodroulette.data.models.SimpleFacebookLocation
 import io.reactivex.Observable
+import io.reactivex.subjects.PublishSubject
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -19,6 +20,7 @@ class FacebookPlaceProvider {
         val JSON = jacksonObjectMapper()
         var places = mutableListOf<SimpleFacebookLocation>()
         var placesObservable: Observable<MutableList<SimpleFacebookLocation>> = Observable.just(places)
+        var placesSubject: PublishSubject<MutableList<SimpleFacebookLocation>> = PublishSubject.create()
 
         operator fun JSONArray.iterator(): Iterator<JSONObject> = (0 until length()).asSequence().map { get(it) as JSONObject }.iterator()
 
@@ -38,11 +40,12 @@ class FacebookPlaceProvider {
                         val parsedObject = JSON.readValue<SimpleFacebookLocation>(item.toString())
                         places.add(parsedObject)
                     }
+                    placesSubject.onNext(places)
                 }
             }
             request.executeAsync()
 
-            return placesObservable
+            return placesSubject
         }
     }
 }
