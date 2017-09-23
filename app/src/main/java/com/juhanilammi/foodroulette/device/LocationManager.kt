@@ -4,28 +4,25 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.location.Location
 import android.os.Bundle
+import android.os.Looper
+import android.util.Log
 import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.api.GoogleApiClient
-import com.google.android.gms.location.FusedLocationProviderClient
-import com.google.android.gms.location.LocationServices
-import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.location.*
 import com.juhanilammi.foodroulette.R
 import com.juhanilammi.foodroulette.utils.LocationNotAvailableException
 import io.reactivex.Observable
+import io.reactivex.ObservableEmitter
+import io.reactivex.ObservableOnSubscribe
+import io.reactivex.Single
+import io.reactivex.subjects.AsyncSubject
+import io.reactivex.subjects.BehaviorSubject
+import io.reactivex.subjects.PublishSubject
+import java.io.IOError
+import java.io.IOException
 
-public class LocationManager private constructor() : GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener {
-    override fun onConnected(p0: Bundle?) {
-        mFusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
-        isConnected = true
-    }
+public class LocationManager private constructor()  {
 
-    override fun onConnectionSuspended(p0: Int) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-    }
-
-    override fun onConnectionFailed(p0: ConnectionResult) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-    }
 
     private object Holder {
         val INSTANCE = LocationManager()
@@ -39,46 +36,48 @@ public class LocationManager private constructor() : GoogleApiClient.ConnectionC
     lateinit var mFusedLocationClient: FusedLocationProviderClient
     lateinit var context: Context
     var isConnected: Boolean = false
-
-    /*
-     * Check permission when calling instance of LocationManager
-     */
-    @SuppressLint("MissingPermission")
-    val mLocationObservable: Observable<Location> = Observable.create({ e ->
-        e.serialize()
-        mFusedLocationClient.locationAvailability.addOnCompleteListener({
-            availabilityTask ->
-            if (availabilityTask.isSuccessful && availabilityTask.result.isLocationAvailable) {
-                mFusedLocationClient.lastLocation.addOnCompleteListener({
-                    lastLocationTask ->
-                    if (lastLocationTask.isSuccessful) {
-                        e.onNext(lastLocationTask.result)
-                    } else {
-                        e.onError(LocationNotAvailableException(context.getString(R.string.location_not_available)))
-                    }
-                })
-            } else {
-                e.onError(LocationNotAvailableException(context.getString(R.string.location_not_available)))
-            }
-        })
-    })
+    val locationPublisher: BehaviorSubject<Location?> = BehaviorSubject.create()
+    var currentLocation: Location? = null
 
     fun addContext(context: Context) {
         this.context = context
     }
 
-    fun connect() {
+    fun build() {
         mGoogleApiClient = GoogleApiClient.Builder(context)
                 .addApi(LocationServices.API)
-                .addConnectionCallbacks(this)
-                .addOnConnectionFailedListener { this }
                 .build()
-        mGoogleApiClient.connect()
+
     }
 
     @SuppressLint("MissingPermission")
-    fun retrievLocationObservable(): Observable<Location> {
-        return mLocationObservable
+    fun retrieveLocationObservable(): Observable<Location?> {
+
+
+        return Observable.create { e ->
+            if (isConnected) {
+                e.onNext(mFusedLocationClient.lastLocation.result)
+            } else {
+                mGoogleApiClient.registerConnectionCallbacks(object : GoogleApiClient.ConnectionCallbacks {
+                    override fun onConnected(args: Bundle?) {
+                        mFusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
+                        isConnected = true
+                        mFusedLocationClient.lastLocation.addOnCompleteListener { task ->
+                            if (task.isSuccessful) {
+                                e.onNext(task.result)
+                            }
+                        }
+                    }
+
+                    override fun onConnectionSuspended(code: Int) {
+                        e.onError(throw IOException("Connection suspended"))
+                    }
+
+                })
+                mGoogleApiClient.registerConnectionFailedListener({ e.onError(throw IOException("connection failed")) })
+                mGoogleApiClient.connect()
+            }
+        }
     }
 
 }

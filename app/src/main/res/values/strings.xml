@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">Food Roulette</string>
     <string name="location_not_available">Location not available</string>
+    <string name="show_in_map">Show in map</string>
 </resources>
